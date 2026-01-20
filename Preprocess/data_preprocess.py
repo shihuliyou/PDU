@@ -92,9 +92,11 @@ class data_Preprocessor:
                 if row >= pad_begin:  # offset for the first 30-days average
                     begin_date_row = row
                     break
+
             mov_aver_features = np.zeros(
                 [selected_EOD.shape[0], 4], dtype=float
-            )  # 4 columns refers to 5-, 10-, 20-, 30-days average
+            )  # 4 columns refers to 5-, 10-, 20-, 30-days RV (avg of squared returns)
+
             for row in range(begin_date_row, selected_EOD.shape[0]):
                 date_index = selected_EOD[row][0]
                 aver_5 = 0.0
@@ -105,24 +107,39 @@ class data_Preprocessor:
                 count_10 = 0
                 count_20 = 0
                 count_30 = 0
+
                 for offset in range(30):
+                    if (row - offset - 1) < 0:
+                        continue
+
                     date_gap = date_index - selected_EOD[row - offset][0]
+
+                    C_t = selected_EOD[row - offset][4]
+                    C_tm1 = selected_EOD[row - offset - 1][4]
+
+                    if (C_t <= 0) or (C_tm1 <= 0):
+                        continue
+
+                    r = np.log(C_t) - np.log(C_tm1)  # log return
+                    r2 = r * r  # squared return (variance increment)
+
                     if date_gap < 5:
                         count_5 += 1
-                        aver_5 += selected_EOD[row - offset][4]
+                        aver_5 += r2
                     if date_gap < 10:
                         count_10 += 1
-                        aver_10 += selected_EOD[row - offset][4]
+                        aver_10 += r2
                     if date_gap < 20:
                         count_20 += 1
-                        aver_20 += selected_EOD[row - offset][4]
+                        aver_20 += r2
                     if date_gap < 30:
                         count_30 += 1
-                        aver_30 += selected_EOD[row - offset][4]
-                mov_aver_features[row][0] = aver_5 / count_5
-                mov_aver_features[row][1] = aver_10 / count_10
-                mov_aver_features[row][2] = aver_20 / count_20
-                mov_aver_features[row][3] = aver_30 / count_30
+                        aver_30 += r2
+
+                mov_aver_features[row][0] = np.sqrt(aver_5 / count_5) if count_5 > 0 else 0.0
+                mov_aver_features[row][1] = np.sqrt(aver_10 / count_10) if count_10 > 0 else 0.0
+                mov_aver_features[row][2] = np.sqrt(aver_20 / count_20) if count_20 > 0 else 0.0
+                mov_aver_features[row][3] = np.sqrt(aver_30 / count_30) if count_30 > 0 else 0.0
 
             '''
                 normalize features by feature / max, the max price is the
@@ -137,16 +154,14 @@ class data_Preprocessor:
                 print('!!!!!!!!!')
             open_high_low = (selected_EOD[:, 1:4] - pri_min) / \
                             (price_max - pri_min)
-            mov_aver_features = mov_aver_features / price_max
+            eps = 1e-12
+            mov_aver_features = np.where(mov_aver_features > 0.0,
+                                         np.log(mov_aver_features + eps),
+                                         mov_aver_features)
             volume_max = np.max(selected_EOD[begin_date_row:, 5])
             volume_featrue = selected_EOD[:, 5] / volume_max
             print(volume_featrue.shape)
-            '''
-                generate feature and ground truth in the following format:
-                date_index, 5-day, 10-day, 20-day, 30-day, close price
-                two ways to pad missing dates:
-                for dates without record, pad a row [date_index, -1234 * 5]
-            '''
+
             features = np.ones([len(trading_dates) - pad_begin, 10],
                                dtype=float) * -1234
             # data missed at the beginning
@@ -167,7 +182,7 @@ class data_Preprocessor:
                         selected_EOD[row][4] / price_max
             print(features.shape)
             # # write out
-            opath = '../data/2013-01-01-1/'
+            opath = 'D:/PythonProject/PDU/data/2013-01-01-3/'
             np.savetxt(os.path.join(opath, self.market_name + '_' +
                                     self.tickers[stock_index] + '_' +
                                     str(return_days) + '.csv'), features,
@@ -186,9 +201,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.path is None:
-        args.path = '../data/google_finance'
+        args.path = 'D:/PythonProject/PDU/data/google_finance'
     if args.market is None:
-        args.market = 'NASDAQ'
+        args.market = 'NYSE'
 
     processor = data_Preprocessor(args.path, args.market)
 

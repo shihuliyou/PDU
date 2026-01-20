@@ -1,8 +1,13 @@
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
-from PDUArch import make_model, Predictor
-from utils import byol_loss_fn, transpose_node_to_graph
+try:
+    from .PDUArch import make_model, Predictor
+    from .utils import byol_loss_fn, transpose_node_to_graph
+except ImportError:
+    from PDUArch import make_model, Predictor
+    from utils import byol_loss_fn, transpose_node_to_graph
+
 class MLP(nn.Module):
     def __init__(self, hid, sigma=False):
         super(MLP, self).__init__()

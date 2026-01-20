@@ -2,9 +2,12 @@ import os
 import pickle
 import numpy as np
 
-INDUSTRY_NPY = r"D:\PythonProject\PDU\data\relation\sector_industry\NASDAQ_industry_relation.npy"
-WIKI_NPY = r"D:\PythonProject\PDU\data\relation\wikidata\NASDAQ_wiki_relation.npy"
-OUT_PICKLE = r"D:\PythonProject\PDU\data\relation\NASDAQ_File.txt"
+MARKET = "NYSE"
+
+INDUSTRY_NPY = rf"D:\PythonProject\PDU\data\relation\sector_industry\{MARKET}_industry_relation.npy"
+WIKI_NPY     = rf"D:\PythonProject\PDU\data\relation\wikidata\{MARKET}_wiki_relation.npy"
+OUT_PICKLE   = rf"D:\PythonProject\PDU\data\relation\{MARKET}_File.txt"
+
 
 def adj_from_relation(arr: np.ndarray) -> np.ndarray:
     if arr.ndim == 3:

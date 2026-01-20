@@ -16,10 +16,10 @@ import torch.optim as optim
 from tqdm import tqdm
 
 from Train.evaluator import evaluate
-from load_data import *
-from PDU import PDUModel
-from utils import DataGraph
-from utils import get_graph_MS
+from .load_data import *
+from .PDU import PDUModel
+from .utils import DataGraph
+from .utils import get_graph_MS
 
 seed = 42
 random.seed(seed)
@@ -74,7 +74,7 @@ class Stock_PDU:
         self.tickers_fname = tickers_fname
         self.tickers = np.genfromtxt(os.path.join(data_path, '..', tickers_fname),
                                      dtype=str, delimiter='\t', skip_header=False)
-        self.train_data = pickle.load(open('../data/relation/NASDAQ_File.txt', 'rb'))
+        self.train_data = pickle.load(open('data/relation/NYSE_File.txt', 'rb'))
         self.n_node = n_node
         self.graph_data = DataGraph(self.train_data, len(self.tickers))
         self.pyg_graph = get_graph_MS(self.graph_data.graph)
@@ -117,7 +117,7 @@ class Stock_PDU:
 
     def train(self):
         global df
-        model = PDUModel(in_feature=4, out_feature=1, node_num=1026, revin=False, adj=self.graph_data.graph,
+        model = PDUModel(in_feature=4, out_feature=1, node_num=1737, revin=False, adj=self.graph_data.graph,
                          adj_strg=None, hidden_feature=self.hidden).cuda()
 
         index = 0
@@ -168,10 +168,10 @@ class Stock_PDU:
         # ====== 早停机制：4 个指标各自早停，全部早停则停止训练 ======
         es_metrics = ['sharpe5', 'ndcg5', 'mrr_top1', 'dd5']
         es_cfg = {
-            'sharpe5': {'mode': 'max', 'warmup': 1, 'min_delta': 0.05, 'patience': 15},
-            'ndcg5': {'mode': 'max', 'warmup': 1, 'min_delta': 0.003, 'patience': 15},
+            'sharpe5':  {'mode': 'max', 'warmup': 1,  'min_delta': 0.05,   'patience': 15},
+            'ndcg5':    {'mode': 'max', 'warmup': 1, 'min_delta': 0.003,  'patience': 15},
             'mrr_top1': {'mode': 'max', 'warmup': 1, 'min_delta': 0.0008, 'patience': 15},
-            'dd5': {'mode': 'min', 'warmup': 1, 'min_delta': 0.003, 'patience': 15},
+            'dd5':      {'mode': 'min', 'warmup': 1,  'min_delta': 0.003,  'patience': 15},
         }
         es_state = {}
         for m in es_metrics:
@@ -189,7 +189,7 @@ class Stock_PDU:
             else:
                 return new >= old + min_delta
 
-        best_save_path = os.path.join('..', 'output_best_metrics.json')
+        best_save_path = os.path.join('..', 'output_best_metrics_NYSE.json')
         ckpt_dir = os.path.join('..', 'output_ckpt')
         os.makedirs(ckpt_dir, exist_ok=True)
 
@@ -375,7 +375,7 @@ class Stock_PDU:
                     rec['best_epoch'] = int(i)
                     rec['test_value'] = None if t is None else float(t)
 
-                    torch.save(model.state_dict(), os.path.join(ckpt_dir, f'best_by_valid_{metric}.pt'))
+                    torch.save(model.state_dict(), os.path.join(ckpt_dir, f'NYSE_best_by_valid_{metric}.pt'))
 
                     with open(best_save_path, 'w', encoding='utf-8') as f:
                         json.dump(best, f, ensure_ascii=False, indent=2)
@@ -439,8 +439,8 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', help='path of EOD data', default='../data/2013-01-01-2')
-    parser.add_argument('-m', help='market name', default='NASDAQ')
+    parser.add_argument('-p', help='path of EOD data', default='data/2013-01-01-3')
+    parser.add_argument('-m', help='market name', default='NYSE')
     parser.add_argument('-t', help='fname for selected tickers')
     parser.add_argument('-l', default=4, help='length of historical sequence for feature')
     parser.add_argument('-u', default=64, help='number of hidden units in lstm')
@@ -458,7 +458,7 @@ if __name__ == '__main__':
     args.gpu = (args.gpu == 1)
     args.inner_prod = (args.inner_prod == 1)
 
-    market_name = 'NASDAQ'
+    market_name = 'NYSE'
     args.t = market_name + '_tickers_qualify_dr-0.98_min-5_smooth.csv'
 
     parameters = {'seq': int(4), 'unit': int(args.u), 'lr': float(0.001), 'alpha': float(args.a)}
